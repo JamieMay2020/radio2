@@ -331,6 +331,7 @@
                 this.volume = 0.7;
                 this.currentAudio = null;
                 this.isPlaying = false;
+                this.isChangingStation = false; // Flag to prevent conflicts
                 
                 this.stations = [
                     { name: "STATION 1", frequency: "101.5 FM", folder: "station1", songs: ["song1.mp3", "song2.mp3", "song3.mp3"] },
@@ -405,44 +406,57 @@
                 this.playCurrentSong();
             }
             
-            changeStation(newStationIndex) {
-                if (newStationIndex === this.currentStation) return;
-                
-                console.log(`Switching from station ${this.currentStation} to ${newStationIndex}`);
-                
-                // FIRST: Stop and cleanup current audio completely
+            // Complete cleanup of audio element
+            cleanupAudio() {
                 if (this.currentAudio) {
-                    this.currentAudio.pause();
-                    this.currentAudio.currentTime = 0;
-                    this.currentAudio.src = ''; // Clear the source
+                    // Remove all event listeners by cloning the node
+                    const oldAudio = this.currentAudio;
+                    oldAudio.pause();
+                    oldAudio.currentTime = 0;
+                    oldAudio.src = '';
+                    oldAudio.load(); // This helps with cleanup
+                    
+                    // Remove reference
                     this.currentAudio = null;
                 }
+            }
+            
+            changeStation(newStationIndex) {
+                if (newStationIndex === this.currentStation || this.isChangingStation) return;
                 
-                // SECOND: Update station info
+                console.log(`Switching from station ${this.currentStation} to ${newStationIndex}`);
+                this.isChangingStation = true;
+                
+                // Complete cleanup of current audio
+                this.cleanupAudio();
+                
+                // Update station info
                 this.currentStation = newStationIndex;
                 this.currentSongIndex = 0;
                 
-                // THIRD: Update UI
+                // Update UI
                 document.querySelectorAll('.station-btn').forEach(btn => btn.classList.remove('active'));
                 document.querySelector(`[data-station="${newStationIndex}"]`).classList.add('active');
                 
                 this.updateDisplay();
                 
-                // FOURTH: Start new station after a brief pause to ensure cleanup
+                // Start new station after ensuring cleanup is complete
                 if (this.isPlaying) {
                     setTimeout(() => {
+                        this.isChangingStation = false;
                         this.playCurrentSong();
-                    }, 100);
+                    }, 200); // Slightly longer delay to ensure complete cleanup
+                } else {
+                    this.isChangingStation = false;
                 }
             }
             
             playCurrentSong() {
-                // Ensure any previous audio is completely stopped
-                if (this.currentAudio) {
-                    this.currentAudio.pause();
-                    this.currentAudio.src = '';
-                    this.currentAudio = null;
-                }
+                // Prevent multiple simultaneous calls
+                if (this.isChangingStation) return;
+                
+                // Ensure complete cleanup
+                this.cleanupAudio();
                 
                 const station = this.stations[this.currentStation];
                 const songFile = station.songs[this.currentSongIndex];
@@ -450,53 +464,55 @@
                 
                 console.log(`Playing: ${songPath}`);
                 
-                // Create completely new audio element
-                this.currentAudio = new Audio();
+                // Create new audio element
+                this.currentAudio = new Audio(songPath);
                 this.currentAudio.volume = this.volume;
                 this.currentAudio.preload = 'auto';
                 
-                // Set up event listeners BEFORE setting src
-                this.currentAudio.addEventListener('ended', () => {
+                // Set up event listeners with proper binding
+                const handleEnded = () => {
                     console.log('Song ended, playing next');
                     this.playNextSong();
-                });
+                };
                 
-                this.currentAudio.addEventListener('error', (e) => {
+                const handleError = (e) => {
                     console.log(`Audio error for ${songPath}:`, e);
-                    // Wait 2 seconds then try next song
                     setTimeout(() => {
-                        this.playNextSong();
+                        if (!this.isChangingStation) { // Only continue if not changing stations
+                            this.playNextSong();
+                        }
                     }, 2000);
-                });
+                };
                 
-                this.currentAudio.addEventListener('canplay', () => {
+                const handleCanPlay = () => {
                     console.log(`Audio ready: ${songPath}`);
-                });
+                };
                 
-                // Set source and play
-                this.currentAudio.src = songPath;
+                // Add event listeners
+                this.currentAudio.addEventListener('ended', handleEnded);
+                this.currentAudio.addEventListener('error', handleError);
+                this.currentAudio.addEventListener('canplay', handleCanPlay);
+                
+                // Play the audio
                 this.currentAudio.play().then(() => {
                     console.log(`Successfully playing: ${songPath}`);
                 }).catch((error) => {
                     console.log(`Play failed for ${songPath}:`, error.message);
-                    // If play fails, try next song after delay
-                    setTimeout(() => {
-                        this.playNextSong();
-                    }, 2000);
+                    if (!this.isChangingStation) {
+                        setTimeout(() => {
+                            this.playNextSong();
+                        }, 2000);
+                    }
                 });
                 
                 this.updateDisplay();
             }
             
             playNextSong() {
-                console.log(`Moving to next song. Current: ${this.currentSongIndex}`);
+                // Prevent conflicts during station changes
+                if (this.isChangingStation) return;
                 
-                // Stop current audio completely
-                if (this.currentAudio) {
-                    this.currentAudio.pause();
-                    this.currentAudio.src = '';
-                    this.currentAudio = null;
-                }
+                console.log(`Moving to next song. Current: ${this.currentSongIndex}`);
                 
                 // Move to next song
                 this.currentSongIndex = (this.currentSongIndex + 1) % this.stations[this.currentStation].songs.length;
