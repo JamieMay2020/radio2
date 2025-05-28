@@ -23,16 +23,6 @@
             overflow: hidden;
         }
         
-        .desktop-background {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #5A9FD4 0%, #306998 100%);
-            z-index: -1;
-        }
-        
         .radio-container {
             background: linear-gradient(145deg, #f0f0f0 0%, #d4d4d4 100%);
             border: 3px solid #8e8e8e;
@@ -60,12 +50,6 @@
             color: #000080;
             text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
             margin-bottom: 5px;
-        }
-        
-        .radio-subtitle {
-            font-size: 12px;
-            color: #666;
-            font-style: italic;
         }
         
         .radio-body {
@@ -291,54 +275,15 @@
             background: #silver;
             border-radius: 2.5px;
         }
-        
-        .static-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        
-        .static-text {
-            color: white;
-            font-size: 24px;
-            font-family: 'Courier New', monospace;
-            animation: static-flicker 0.1s infinite;
-        }
-        
-        @keyframes static-flicker {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-
-        .loading-indicator {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #00ff00;
-            font-size: 12px;
-            opacity: 0.8;
-        }
     </style>
 </head>
 <body>
-    <div class="desktop-background"></div>
-    
     <div class="radio-container">
         <div class="antenna"></div>
         <div class="power-led"></div>
         
         <div class="radio-header">
             <div class="radio-title">TRENCHERS RADIO</div>
-            <div class="radio-subtitle"></div>
         </div>
         
         <div class="radio-body">
@@ -347,8 +292,7 @@
                     <div class="lcd-display">
                         <div class="station-info" id="station-name">STATION 1</div>
                         <div class="frequency" id="frequency">101.5 FM</div>
-                        <div class="song-info" id="song-info">♪ Ready to Play ♪</div>
-                        <div class="loading-indicator" id="loading-indicator" style="display: none;">Loading...</div>
+                        <div class="song-info" id="song-info">♪ Click to Start ♪</div>
                     </div>
                 </div>
                 
@@ -379,200 +323,32 @@
             </div>
         </div>
     </div>
-    
-    <div class="static-overlay" id="static-overlay">
-        <div class="static-text">TUNING...</div>
-    </div>
 
     <script>
-        class TrenchersRadio {
+        class SimpleRadio {
             constructor() {
                 this.currentStation = 0;
                 this.volume = 0.7;
-                this.isInitialized = false;
-                this.userHasInteracted = false;
+                this.currentAudio = null;
+                this.isPlaying = false;
                 
-                // Predefined song lists for each station
                 this.stations = [
-                    {
-                        name: "STATION 1",
-                        frequency: "101.5 FM",
-                        folder: "station1",
-                        songs: [
-                            { title: "Rock Anthem", artist: "Station 1", filename: "song1.mp3" },
-                            { title: "Electric Dreams", artist: "Station 1", filename: "song2.mp3" },
-                            { title: "Highway Blues", artist: "Station 1", filename: "song3.mp3" }
-                        ]
-                    },
-                    {
-                        name: "STATION 2", 
-                        frequency: "102.3 FM",
-                        folder: "station2",
-                        songs: [
-                            { title: "Pop Hit", artist: "Station 2", filename: "pop1.mp3" },
-                            { title: "Dance Floor", artist: "Station 2", filename: "pop2.mp3" },
-                            { title: "Summer Vibes", artist: "Station 2", filename: "pop3.mp3" }
-                        ]
-                    },
-                    {
-                        name: "STATION 3",
-                        frequency: "103.1 FM", 
-                        folder: "station3",
-                        songs: [
-                            { title: "Hip Hop Beat", artist: "Station 3", filename: "hiphop1.mp3" },
-                            { title: "Urban Flow", artist: "Station 3", filename: "hiphop2.mp3" },
-                            { title: "Street Sound", artist: "Station 3", filename: "hiphop3.mp3" }
-                        ]
-                    },
-                    {
-                        name: "STATION 4",
-                        frequency: "104.7 FM",
-                        folder: "station4",
-                        songs: [
-                            { title: "Alternative Rock", artist: "Station 4", filename: "rock1.mp3" },
-                            { title: "Indie Vibes", artist: "Station 4", filename: "rock2.mp3" },
-                            { title: "Modern Edge", artist: "Station 4", filename: "rock3.mp3" }
-                        ]
-                    },
-                    {
-                        name: "CLASSIC",
-                        frequency: "105.5 FM",
-                        folder: "classic",
-                        songs: [
-                            { title: "Classical Symphony", artist: "Classic FM", filename: "classical1.mp3" },
-                            { title: "Baroque Piece", artist: "Classic FM", filename: "classical2.mp3" },
-                            { title: "Chamber Music", artist: "Classic FM", filename: "classical3.mp3" }
-                        ]
-                    },
-                    {
-                        name: "JAZZ FM",
-                        frequency: "106.3 FM",
-                        folder: "jazz",
-                        songs: [
-                            { title: "Smooth Jazz", artist: "Jazz FM", filename: "jazz1.mp3" },
-                            { title: "Blue Note", artist: "Jazz FM", filename: "jazz2.mp3" },
-                            { title: "Cool Breeze", artist: "Jazz FM", filename: "jazz3.mp3" }
-                        ]
-                    }
+                    { name: "STATION 1", frequency: "101.5 FM", folder: "station1", songs: ["song1.mp3", "song2.mp3", "song3.mp3"] },
+                    { name: "STATION 2", frequency: "102.3 FM", folder: "station2", songs: ["pop1.mp3", "pop2.mp3", "pop3.mp3"] },
+                    { name: "STATION 3", frequency: "103.1 FM", folder: "station3", songs: ["hiphop1.mp3", "hiphop2.mp3", "hiphop3.mp3"] },
+                    { name: "STATION 4", frequency: "104.7 FM", folder: "station4", songs: ["rock1.mp3", "rock2.mp3", "rock3.mp3"] },
+                    { name: "CLASSIC", frequency: "105.5 FM", folder: "classic", songs: ["classical1.mp3", "classical2.mp3", "classical3.mp3"] },
+                    { name: "JAZZ FM", frequency: "106.3 FM", folder: "jazz", songs: ["jazz1.mp3", "jazz2.mp3", "jazz3.mp3"] }
                 ];
                 
-                this.audioElements = [];
-                this.currentSongIndex = new Array(this.stations.length).fill(0);
-                this.loadedStations = new Set();
-                
+                this.currentSongIndex = 0;
                 this.init();
             }
             
             init() {
-                // Set up UI immediately
                 this.setupEventListeners();
                 this.updateDisplay();
                 this.updateVolumeDisplay();
-                
-                // Create silent audio elements first for immediate playback capability
-                this.createPlaceholderAudio();
-                
-                // Load actual audio files in background
-                this.loadAudioFiles();
-                
-                this.isInitialized = true;
-            }
-            
-            createPlaceholderAudio() {
-                // Create silent placeholder audio for immediate functionality
-                const silentAudioData = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAAABAAARKwAAIhYAQACABAAZGF0YQAAAAA=';
-                
-                this.stations.forEach((station, stationIndex) => {
-                    const stationAudios = [];
-                    station.songs.forEach((song, songIndex) => {
-                        const audio = new Audio();
-                        audio.src = silentAudioData;
-                        audio.loop = false;
-                        audio.volume = stationIndex === this.currentStation ? this.volume : 0;
-                        
-                        audio.addEventListener('ended', () => {
-                            this.playNextSong(stationIndex);
-                        });
-                        
-                        stationAudios.push(audio);
-                    });
-                    this.audioElements.push(stationAudios);
-                });
-                
-                // Create static audio
-                this.staticAudio = new Audio();
-                this.staticAudio.src = silentAudioData;
-                this.staticAudio.volume = this.volume;
-            }
-            
-            async loadAudioFiles() {
-                console.log('Loading audio files in background...');
-                
-                // Load audio files for each station without blocking
-                for (let stationIndex = 0; stationIndex < this.stations.length; stationIndex++) {
-                    const station = this.stations[stationIndex];
-                    
-                    // Load songs for this station
-                    for (let songIndex = 0; songIndex < station.songs.length; songIndex++) {
-                        const song = station.songs[songIndex];
-                        const filepath = `./${station.folder}/${song.filename}`;
-                        
-                        try {
-                            const audio = new Audio();
-                            audio.crossOrigin = 'anonymous';
-                            audio.preload = 'metadata';
-                            
-                            // Set up event listeners before loading
-                            audio.addEventListener('canplay', () => {
-                                // Replace the placeholder audio with the real one
-                                const oldAudio = this.audioElements[stationIndex][songIndex];
-                                
-                                // Copy volume and set up ended event
-                                audio.volume = oldAudio.volume;
-                                audio.addEventListener('ended', () => {
-                                    this.playNextSong(stationIndex);
-                                });
-                                
-                                // Replace in array
-                                this.audioElements[stationIndex][songIndex] = audio;
-                                
-                                // If this is the current playing song, start it
-                                if (stationIndex === this.currentStation && 
-                                    songIndex === this.currentSongIndex[stationIndex] && 
-                                    this.userHasInteracted) {
-                                    audio.play().catch(e => console.log('Playback failed:', e.message));
-                                }
-                                
-                                console.log(`Loaded: ${station.name} - ${song.title}`);
-                            });
-                            
-                            audio.addEventListener('error', () => {
-                                console.log(`Could not load: ${filepath}`);
-                            });
-                            
-                            // Start loading
-                            audio.src = filepath;
-                            
-                        } catch (error) {
-                            console.log(`Error loading ${filepath}:`, error);
-                        }
-                    }
-                    
-                    this.loadedStations.add(stationIndex);
-                }
-                
-                // Try to load static sound
-                try {
-                    const staticAudio = new Audio();
-                    staticAudio.addEventListener('canplay', () => {
-                        this.staticAudio = staticAudio;
-                        this.staticAudio.volume = this.volume;
-                        console.log('Static sound loaded');
-                    });
-                    staticAudio.src = './static.wav';
-                } catch (error) {
-                    console.log('Static sound not available');
-                }
             }
             
             setupEventListeners() {
@@ -584,17 +360,19 @@
                     });
                 });
                 
-                // Volume control - set up immediately
+                // Volume control
                 this.setupVolumeControl();
                 
-                // Handle first user interaction
-                document.addEventListener('click', this.handleFirstInteraction.bind(this), { once: true });
+                // Start on first click
+                document.addEventListener('click', () => {
+                    if (!this.isPlaying) {
+                        this.startPlaying();
+                    }
+                }, { once: true });
             }
             
             setupVolumeControl() {
                 const volumeControl = document.getElementById('volume-control');
-                const volumeThumb = document.getElementById('volume-thumb');
-                
                 let isDragging = false;
                 
                 const updateVolume = (e) => {
@@ -603,19 +381,18 @@
                     const percentage = Math.max(0, Math.min(1, (x - 8) / (rect.width - 16)));
                     this.volume = percentage;
                     this.updateVolumeDisplay();
-                    this.updateAudioVolumes();
+                    if (this.currentAudio) {
+                        this.currentAudio.volume = this.volume;
+                    }
                 };
                 
                 volumeControl.addEventListener('mousedown', (e) => {
                     isDragging = true;
                     updateVolume(e);
-                    e.preventDefault();
                 });
                 
                 document.addEventListener('mousemove', (e) => {
-                    if (isDragging) {
-                        updateVolume(e);
-                    }
+                    if (isDragging) updateVolume(e);
                 });
                 
                 document.addEventListener('mouseup', () => {
@@ -623,199 +400,83 @@
                 });
             }
             
-            handleFirstInteraction() {
-                this.userHasInteracted = true;
-                this.globalStartTime = Date.now();
-                console.log('User interacted - starting synchronized radio broadcast...');
-                
-                // Start all stations simultaneously with staggered song positions
-                this.audioElements.forEach((stationAudios, stationIndex) => {
-                    this.startStationBroadcast(stationIndex);
-                });
-                
-                this.updateDisplay();
-            }
-            
-            startStationBroadcast(stationIndex) {
-                if (!this.userHasInteracted) return;
-                
-                // Calculate which song should be playing based on elapsed time
-                const elapsedTime = (Date.now() - this.globalStartTime) / 1000;
-                const stationOffset = stationIndex * 7; // Each station starts 7 seconds apart in their cycle
-                const adjustedTime = elapsedTime + stationOffset;
-                const totalCycleTime = this.stations[stationIndex].songs.length * this.songDuration;
-                const currentCycleTime = adjustedTime % totalCycleTime;
-                
-                // Determine current song and position within that song
-                const songIndex = Math.floor(currentCycleTime / this.songDuration);
-                const positionInSong = currentCycleTime % this.songDuration;
-                
-                this.currentSongIndex[stationIndex] = songIndex;
-                
-                const stationAudios = this.audioElements[stationIndex];
-                const currentAudio = stationAudios[songIndex];
-                
-                if (currentAudio) {
-                    // Set playback position to simulate ongoing broadcast
-                    currentAudio.currentTime = Math.min(positionInSong, currentAudio.duration || this.songDuration);
-                    
-                    // Only play if this is the current station (others run silently)
-                    if (stationIndex === this.currentStation) {
-                        currentAudio.play().catch(e => {
-                            console.log(`Station ${stationIndex} playback failed:`, e.message);
-                        });
-                    }
-                    
-                    // Set up timer for next song
-                    this.scheduleNextSong(stationIndex, this.songDuration - positionInSong);
-                }
-            }
-            
-            scheduleNextSong(stationIndex, timeUntilNext) {
-                // Clear existing timer
-                if (this.stationTimers[stationIndex]) {
-                    clearTimeout(this.stationTimers[stationIndex]);
-                }
-                
-                // Schedule next song
-                this.stationTimers[stationIndex] = setTimeout(() => {
-                    this.playNextSong(stationIndex);
-                }, timeUntilNext * 1000);
-            }
-            
-            playNextSong(stationIndex) {
-                const stationAudios = this.audioElements[stationIndex];
-                if (stationAudios.length === 0) return;
-                
-                // Stop current song
-                const currentAudio = stationAudios[this.currentSongIndex[stationIndex]];
-                if (currentAudio && !currentAudio.paused) {
-                    currentAudio.pause();
-                    currentAudio.currentTime = 0;
-                }
-                
-                // Move to next song
-                this.currentSongIndex[stationIndex] = (this.currentSongIndex[stationIndex] + 1) % this.stations[stationIndex].songs.length;
-                const nextAudio = stationAudios[this.currentSongIndex[stationIndex]];
-                
-                // Play next song only if this is the current station and user has interacted
-                if (nextAudio && this.userHasInteracted) {
-                    nextAudio.currentTime = 0;
-                    
-                    if (stationIndex === this.currentStation) {
-                        nextAudio.play().catch(e => {
-                            console.log('Next song playback failed:', e.message);
-                        });
-                    }
-                }
-                
-                // Schedule the song after this one
-                this.scheduleNextSong(stationIndex, this.songDuration);
-                
-                // Update display if this is the current station
-                if (stationIndex === this.currentStation) {
-                    this.updateDisplay();
-                }
+            startPlaying() {
+                this.isPlaying = true;
+                this.playCurrentSong();
             }
             
             changeStation(newStationIndex) {
                 if (newStationIndex === this.currentStation) return;
                 
-                // Store reference to old station before changing
-                const oldStation = this.currentStation;
+                // Stop current audio
+                if (this.currentAudio) {
+                    this.currentAudio.pause();
+                    this.currentAudio = null;
+                }
                 
-                // Play static sound and show overlay
-                this.playStaticSound();
+                // Update station
+                this.currentStation = newStationIndex;
+                this.currentSongIndex = 0;
                 
-                // Update button states immediately
+                // Update UI
                 document.querySelectorAll('.station-btn').forEach(btn => btn.classList.remove('active'));
                 document.querySelector(`[data-station="${newStationIndex}"]`).classList.add('active');
                 
-                setTimeout(() => {
-                    // Pause the old station's audio
-                    const oldAudio = this.audioElements[oldStation][this.currentSongIndex[oldStation]];
-                    if (oldAudio && !oldAudio.paused) {
-                        oldAudio.pause();
-                    }
-                    
-                    // Change to new station
-                    this.currentStation = newStationIndex;
-                    this.updateAudioVolumes();
-                    this.updateDisplay();
-                    this.hideStaticOverlay();
-                    
-                    // Start playing new station at its current broadcast position
-                    if (this.userHasInteracted) {
-                        const newAudio = this.audioElements[this.currentStation][this.currentSongIndex[this.currentStation]];
-                        if (newAudio) {
-                            // Calculate where this station should be in its broadcast
-                            const elapsedTime = (Date.now() - this.globalStartTime) / 1000;
-                            const stationOffset = this.currentStation * 7;
-                            const adjustedTime = elapsedTime + stationOffset;
-                            const currentCycleTime = adjustedTime % (this.stations[this.currentStation].songs.length * this.songDuration);
-                            const positionInSong = currentCycleTime % this.songDuration;
-                            
-                            // Set the correct position and play
-                            newAudio.currentTime = Math.min(positionInSong, newAudio.duration || this.songDuration);
-                            newAudio.play().catch(e => {
-                                console.log('Station change playback failed:', e.message);
-                                // Fallback: start from beginning if position setting fails
-                                setTimeout(() => {
-                                    newAudio.currentTime = 0;
-                                    newAudio.play().catch(err => console.log('Retry failed:', err.message));
-                                }, 100);
-                            });
-                        }
-                    }
-                }, 500);
-            }
-            
-            playStaticSound() {
-                document.getElementById('static-overlay').style.display = 'flex';
-                if (this.staticAudio) {
-                    this.staticAudio.currentTime = 0;
-                    this.staticAudio.play().catch(e => console.log('Static sound failed to play'));
+                this.updateDisplay();
+                
+                // Start playing if already started
+                if (this.isPlaying) {
+                    this.playCurrentSong();
                 }
             }
             
-            hideStaticOverlay() {
-                document.getElementById('static-overlay').style.display = 'none';
-            }
-            
-            updateAudioVolumes() {
-                this.audioElements.forEach((stationAudios, stationIndex) => {
-                    const volume = stationIndex === this.currentStation ? this.volume : 0;
-                    stationAudios.forEach(audio => {
-                        if (audio) {
-                            const previousVolume = audio.volume;
-                            audio.volume = volume;
-                            
-                            // If we're setting volume to 0, pause the audio to save resources
-                            // If we're setting volume > 0 and it was previously 0, may need to resume
-                            if (volume === 0 && previousVolume > 0 && !audio.paused) {
-                                // Don't pause here as it might interfere with station switching
-                                // Just set volume to 0
-                            }
-                        }
-                    });
+            playCurrentSong() {
+                const station = this.stations[this.currentStation];
+                const songFile = station.songs[this.currentSongIndex];
+                const songPath = `./${station.folder}/${songFile}`;
+                
+                // Create new audio
+                this.currentAudio = new Audio();
+                this.currentAudio.volume = this.volume;
+                
+                // Set up next song when current ends
+                this.currentAudio.addEventListener('ended', () => {
+                    this.playNextSong();
                 });
                 
-                if (this.staticAudio) {
-                    this.staticAudio.volume = this.volume;
-                }
+                // Handle load errors gracefully
+                this.currentAudio.addEventListener('error', () => {
+                    console.log(`Could not load: ${songPath}`);
+                    setTimeout(() => this.playNextSong(), 1000);
+                });
+                
+                // Start playing
+                this.currentAudio.src = songPath;
+                this.currentAudio.play().catch(() => {
+                    // If audio fails, just continue silently
+                    setTimeout(() => this.playNextSong(), 3000);
+                });
+                
+                this.updateDisplay();
+            }
+            
+            playNextSong() {
+                this.currentSongIndex = (this.currentSongIndex + 1) % this.stations[this.currentStation].songs.length;
+                this.playCurrentSong();
             }
             
             updateDisplay() {
                 const station = this.stations[this.currentStation];
-                const currentSong = station.songs[this.currentSongIndex[this.currentStation]];
+                const songFile = station.songs[this.currentSongIndex];
+                const songTitle = songFile.replace('.mp3', '').replace(/\d+/, '').replace(/[_-]/g, ' ').trim();
                 
                 document.getElementById('station-name').textContent = station.name;
                 document.getElementById('frequency').textContent = station.frequency;
                 
-                if (this.userHasInteracted) {
-                    document.getElementById('song-info').textContent = `♪ ${currentSong.title} - ${currentSong.artist} ♪`;
+                if (this.isPlaying) {
+                    document.getElementById('song-info').textContent = `♪ ${songTitle} ♪`;
                 } else {
-                    document.getElementById('song-info').textContent = '♪ Click to Start Playing ♪';
+                    document.getElementById('song-info').textContent = '♪ Click to Start ♪';
                 }
             }
             
@@ -826,9 +487,9 @@
             }
         }
         
-        // Initialize the radio when the page loads
+        // Start the radio
         document.addEventListener('DOMContentLoaded', () => {
-            window.trenchersRadio = new TrenchersRadio();
+            new SimpleRadio();
         });
     </script>
 </body>
